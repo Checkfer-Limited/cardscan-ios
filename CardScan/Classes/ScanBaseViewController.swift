@@ -80,11 +80,7 @@ public protocol TestingImageDataSource: AnyObject {
         }
     }
     
-    @objc static public func configure(apiKey: String? = nil) {
-        if let apiKey = apiKey {
-            Api.apiKey = apiKey
-        }
-        
+    @objc static public func configure() {
         self.machineLearningQueue.async {
             if #available(iOS 11.2, *) {
                 registerAppNotifications()
@@ -141,7 +137,7 @@ public protocol TestingImageDataSource: AnyObject {
             if configuration.runOnOldDevices {
                 return true
             }
-            switch Api.deviceType() {
+            switch deviceType() {
             case "iPhone3,1", "iPhone3,2", "iPhone3,3", "iPhone4,1", "iPhone5,1", "iPhone5,2", "iPhone5,3", "iPhone5,4", "iPhone6,1", "iPhone6,2", "iPhone7,2", "iPhone7,1":
                 return false
             default:
@@ -150,6 +146,25 @@ public protocol TestingImageDataSource: AnyObject {
         } else {
             return false
         }
+    }
+    
+    static func deviceType() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        var deviceType = ""
+        for char in Mirror(reflecting: systemInfo.machine).children {
+            guard let charDigit = (char.value as? Int8) else {
+                return ""
+            }
+            
+            if charDigit == 0 {
+                break
+            }
+            
+            deviceType += String(UnicodeScalar(UInt8(charDigit)))
+        }
+        
+        return deviceType
     }
     
     @objc static public func cameraImage() -> UIImage? {
@@ -162,8 +177,6 @@ public protocol TestingImageDataSource: AnyObject {
     
     public func cancelScan() {
         self.ocr.userCancelled()
-        // fire and forget
-        Api.scanStats(scanStats: self.ocr.scanStats, completion: {_, _ in })
     }
      
     func setupMask() {
@@ -375,7 +388,6 @@ public protocol TestingImageDataSource: AnyObject {
                 let image = self.scannedCardImage
                 
                 // fire and forget
-                Api.scanStats(scanStats: self.ocr.scanStats, completion: {_, _ in })
                 self.onScannedCard(number: number, expiryYear: expiryYear, expiryMonth: expiryMonth, scannedImage: image)
             }
         }
